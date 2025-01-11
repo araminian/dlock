@@ -1,22 +1,38 @@
 package dlock
 
 import (
-	"sync"
+	"errors"
 
 	"github.com/google/uuid"
 )
 
+var (
+	ErrLockerError    = errors.New("locker error")
+	ErrNotOwner       = errors.New("not the owner of the lock")
+	ErrUnlockUnlocked = errors.New("unlocking an unlocked lock")
+)
+
 // Lock is a distributed lock, which is used to lock a resource.
 type Lock struct {
-	// ID is the unique identifier of the lock.
-	id uuid.UUID
-	// Name is the name of the lock.
-	Name string
-	// mu is the mutex of the lock, which is used for internal access control.
-	mu *sync.Mutex
+	// userID is the unique identifier of the user who owns the lock.
+	userID uuid.UUID
+	// name is the name of the lock.
+	name string
+	// group is the group of the lock, which helps to have multiple locks with the same name,
+	// but different groups.
+	group string
 }
 
 type Locker interface {
 	// NewLock creates a new lock.
-	NewLock(name string) (*Lock, error)
+	NewLock(name string, group string) (*Lock, error)
+
+	// Lock locks the lock.
+	Lock(lock *Lock) error
+
+	// Unlock unlocks the lock.
+	Unlock(lock *Lock) error
+
+	// Owner returns the owner of the lock.
+	Owner(lock *Lock) (bool, uuid.UUID, error)
 }
