@@ -194,3 +194,74 @@ loop:
 	require.NoError(t, err)
 
 }
+
+func TestIsLocked(t *testing.T) {
+
+	redis := setupRedis(t)
+
+	locker := NewRedisLocker(WithRedisHost(redis.host), WithRedisPort(redis.port))
+
+	lock, err := locker.NewLock("testlock", "testgroup")
+	require.NoError(t, err)
+
+	// Check unlocked lock
+	locked, err := locker.IsLocked(lock)
+	require.NoError(t, err)
+	require.False(t, locked)
+
+	// Check locked lock
+	locker.Lock(lock)
+
+	locked, err = locker.IsLocked(lock)
+	require.NoError(t, err)
+	require.True(t, locked)
+
+	// Check unlocked lock
+	locker.Unlock(lock)
+
+	locked, err = locker.IsLocked(lock)
+	require.NoError(t, err)
+	require.False(t, locked)
+
+}
+
+func TestIsLockedByMe(t *testing.T) {
+
+	redis := setupRedis(t)
+
+	locker := NewRedisLocker(WithRedisHost(redis.host), WithRedisPort(redis.port))
+
+	lock, err := locker.NewLock("testlock", "testgroup")
+	require.NoError(t, err)
+
+	locker.Lock(lock)
+
+	// Check if we are the owner
+	locked, err := locker.IsLockedByMe(lock)
+	require.NoError(t, err)
+	require.True(t, locked)
+
+	// Unlock the lock
+	locker.Unlock(lock)
+
+	// Should return false, when the lock is unlocked
+	locked, err = locker.IsLockedByMe(lock)
+	require.NoError(t, err)
+	require.False(t, locked)
+
+	// Check if we are not the owner
+	lock2, err := locker.NewLock("testlock", "testgroup")
+	require.NoError(t, err)
+
+	locker.Lock(lock2)
+
+	locked, err = locker.IsLockedByMe(lock)
+	require.NoError(t, err)
+	require.False(t, locked)
+
+	locked, err = locker.IsLockedByMe(lock2)
+	require.NoError(t, err)
+	require.True(t, locked)
+	locker.Unlock(lock2)
+
+}

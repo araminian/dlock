@@ -178,3 +178,13 @@ func (r *RedisLocker) Owner(lock *Lock) (bool, uuid.UUID, error) {
 
 	return true, uuid.MustParse(res[0]), nil
 }
+
+// IsLocked returns true if the lock is locked.
+func (r *RedisLocker) IsLocked(lock *Lock) (bool, error) {
+	return r.isLockTaken(lock)
+}
+
+// IsLockedByMe returns true if the lock is locked by the current user.
+func (r *RedisLocker) IsLockedByMe(lock *Lock) (bool, error) {
+	return r.amIOwner(lock)
+}

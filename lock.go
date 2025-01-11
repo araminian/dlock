@@ -35,4 +35,10 @@ type Locker interface {
 
 	// Owner returns the owner of the lock.
 	Owner(lock *Lock) (bool, uuid.UUID, error)
+
+	// IsLockedByMe returns true if the lock is locked by the current user.
+	IsLockedByMe(lock *Lock) (bool, error)
+
+	// IsLocked returns true if the lock is locked.
+	IsLocked(lock *Lock) (bool, error)
 }
