@@ -297,3 +297,26 @@ func TestTryLockUnlock(t *testing.T) {
 	locker.Unlock(lock2)
 
 }
+
+func TestLockWithTimeout(t *testing.T) {
+
+	redis := setupRedis(t)
+
+	locker := NewRedisLocker(WithRedisHost(redis.host), WithRedisPort(redis.port))
+
+	lock, err := locker.NewLock("testlock", "testgroup")
+	require.NoError(t, err)
+
+	err = locker.LockWithTimeout(lock, 1*time.Second)
+	require.NoError(t, err)
+
+	lock2, err := locker.NewLock("testlock", "testgroup")
+	require.NoError(t, err)
+
+	err = locker.LockWithTimeout(lock2, 1*time.Second)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrLockTimeout)
+
+	locker.Unlock(lock)
+
+}

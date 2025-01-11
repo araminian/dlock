@@ -210,3 +210,36 @@ func (r *RedisLocker) TryLock(lock *Lock) (bool, error) {
 
 	return true, nil
 }
+
+// LockWithTimeout locks the lock with a timeout
+func (r *RedisLocker) LockWithTimeout(lock *Lock, timeout time.Duration) error {
+
+	// Check if the lock is already taken
+	timer := time.NewTimer(timeout)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer timer.Stop()
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timer.C:
+			return ErrLockTimeout
+		case <-ticker.C:
+			isTaken, err := r.isLockTaken(lock)
+			if err != nil {
+				return errors.Join(ErrLockerError, err)
+			}
+
+			if !isTaken {
+				lockKey := fmt.Sprintf("%s:%s", lock.group, lock.name)
+				_, err = r.client.LPush(context.TODO(), lockKey, lock.userID.String()).Result()
+				if err != nil {
+					return errors.Join(ErrLockerError, err)
+				}
+				return nil
+			}
+
+		}
+	}
+
+}

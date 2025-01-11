@@ -2,6 +2,7 @@ package dlock
 
 import (
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -10,6 +11,7 @@ var (
 	ErrLockerError    = errors.New("locker error")
 	ErrNotOwner       = errors.New("not the owner of the lock")
 	ErrUnlockUnlocked = errors.New("unlocking an unlocked lock")
+	ErrLockTimeout    = errors.New("lock timeout")
 )
 
 // Lock is a distributed lock, which is used to lock a resource.
@@ -35,6 +37,9 @@ type Locker interface {
 
 	// TryLock tries to lock the lock.
 	TryLock(lock *Lock) (bool, error)
+
+	// LockWithTimeout locks the lock with a timeout
+	LockWithTimeout(lock *Lock, timeout time.Duration) error
 
 	// Owner returns the owner of the lock.
 	Owner(lock *Lock) (bool, uuid.UUID, error)
