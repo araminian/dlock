@@ -188,3 +188,25 @@ func (r *RedisLocker) IsLocked(lock *Lock) (bool, error) {
 func (r *RedisLocker) IsLockedByMe(lock *Lock) (bool, error) {
 	return r.amIOwner(lock)
 }
+
+// TryLock tries to lock the lock.
+func (r *RedisLocker) TryLock(lock *Lock) (bool, error) {
+
+	// Check if the lock is already taken
+	isTaken, err := r.isLockTaken(lock)
+	if err != nil {
+		return false, errors.Join(ErrLockerError, err)
+	}
+
+	if isTaken {
+		return false, nil
+	}
+
+	lockKey := fmt.Sprintf("%s:%s", lock.group, lock.name)
+	_, err = r.client.LPush(context.TODO(), lockKey, lock.userID.String()).Result()
+	if err != nil {
+		return false, errors.Join(ErrLockerError, err)
+	}
+
+	return true, nil
+}

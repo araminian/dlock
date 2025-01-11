@@ -265,3 +265,35 @@ func TestIsLockedByMe(t *testing.T) {
 	locker.Unlock(lock2)
 
 }
+
+func TestTryLockUnlock(t *testing.T) {
+
+	redis := setupRedis(t)
+
+	locker := NewRedisLocker(WithRedisHost(redis.host), WithRedisPort(redis.port))
+
+	lock, err := locker.NewLock("testlock", "testgroup")
+	require.NoError(t, err)
+
+	// Try to lock the lock
+	locked, err := locker.TryLock(lock)
+	require.NoError(t, err)
+	require.True(t, locked)
+
+	// Try to unlock the lock
+	err = locker.Unlock(lock)
+	require.NoError(t, err)
+
+	// Introduce a new user and try to lock the lock
+	lock2, err := locker.NewLock("testlock", "testgroup")
+	require.NoError(t, err)
+
+	locker.Lock(lock2)
+
+	locked, err = locker.TryLock(lock)
+	require.NoError(t, err)
+	require.False(t, locked)
+
+	locker.Unlock(lock2)
+
+}

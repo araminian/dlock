@@ -33,6 +33,9 @@ type Locker interface {
 	// Unlock unlocks the lock.
 	Unlock(lock *Lock) error
 
+	// TryLock tries to lock the lock.
+	TryLock(lock *Lock) (bool, error)
+
 	// Owner returns the owner of the lock.
 	Owner(lock *Lock) (bool, uuid.UUID, error)
 
