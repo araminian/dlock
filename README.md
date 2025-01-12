@@ -220,4 +220,4 @@ Important: When using locks across different goroutines that need to access the 
 
 MIT License
 
-Copyright (c) 2024 Armin Aminian 
+Copyright (c) 2025 Armin Aminian 
