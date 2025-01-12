@@ -3,6 +3,7 @@ module github.com/araminian/dlock
 go 1.23.3
 
 require (
+	github.com/eapache/go-resiliency v1.7.0
 	github.com/google/uuid v1.6.0
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/stretchr/testify v1.10.0

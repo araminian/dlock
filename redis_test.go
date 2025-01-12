@@ -320,3 +320,43 @@ func TestLockWithTimeout(t *testing.T) {
 	locker.Unlock(lock)
 
 }
+
+func TestLockWithRetryBackoff(t *testing.T) {
+
+	redis := setupRedis(t)
+
+	locker := NewRedisLocker(WithRedisHost(redis.host), WithRedisPort(redis.port))
+
+	lock, err := locker.NewLock("testlock", "testgroup")
+	require.NoError(t, err)
+
+	// Pass
+	locker.Lock(lock)
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		locker.Unlock(lock)
+	}()
+
+	lock2, err := locker.NewLock("testlock", "testgroup")
+	require.NoError(t, err)
+
+	err = locker.LockWithRetryBackoff(lock2, 3, 1*time.Second)
+	require.NoError(t, err)
+
+	locker.Unlock(lock2)
+
+	// Fail
+	locker.Lock(lock)
+	go func() {
+		time.Sleep(3 * time.Second)
+		locker.Unlock(lock)
+	}()
+
+	err = locker.LockWithRetryBackoff(lock2, 1, 1*time.Second)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrLockTimeout)
+
+	locker.Unlock(lock2)
+
+}

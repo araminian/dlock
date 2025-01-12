@@ -41,6 +41,9 @@ type Locker interface {
 	// LockWithTimeout locks the lock with a timeout
 	LockWithTimeout(lock *Lock, timeout time.Duration) error
 
+	// LockWithRetryBackoff locks the lock with a backoff strategy
+	LockWithRetryBackoff(lock *Lock, retry int, backoff time.Duration) error
+
 	// Owner returns the owner of the lock.
 	Owner(lock *Lock) (bool, uuid.UUID, error)
 

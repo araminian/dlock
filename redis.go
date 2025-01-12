@@ -7,12 +7,17 @@ import (
 	"slices"
 	"time"
 
+	"github.com/eapache/go-resiliency/retrier"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
 var (
 	ErrRedisClientNotConnected = errors.New("Can't connect to redis server")
+)
+
+const (
+	lockCheckInterval = 10 * time.Millisecond
 )
 
 type RedisLocker struct {
@@ -96,7 +101,7 @@ func (r *RedisLocker) amIOwner(lock *Lock) (bool, error) {
 func (r *RedisLocker) Lock(lock *Lock) error {
 
 	// Check if the lock is already taken
-	ticker := time.NewTicker(100 * time.Millisecond)
+	ticker := time.NewTicker(lockCheckInterval)
 	defer ticker.Stop()
 
 	for {
@@ -216,7 +221,7 @@ func (r *RedisLocker) LockWithTimeout(lock *Lock, timeout time.Duration) error {
 
 	// Check if the lock is already taken
 	timer := time.NewTimer(timeout)
-	ticker := time.NewTicker(100 * time.Millisecond)
+	ticker := time.NewTicker(lockCheckInterval)
 	defer timer.Stop()
 	defer ticker.Stop()
 
@@ -242,4 +247,34 @@ func (r *RedisLocker) LockWithTimeout(lock *Lock, timeout time.Duration) error {
 		}
 	}
 
+}
+
+// LockWithRetryBackoff locks the lock with a backoff strategy
+// It will retry the lock operation up to retry times, with a backoff time of backoff
+func (r *RedisLocker) LockWithRetryBackoff(lock *Lock, retry int, backoff time.Duration) error {
+
+	retrier := retrier.New(retrier.ExponentialBackoff(retry, backoff), nil)
+
+	err := retrier.Run(func() error {
+
+		// Check if the lock is already taken
+		isTaken, err := r.isLockTaken(lock)
+		if err != nil {
+			return errors.Join(ErrLockerError, err)
+		}
+
+		if !isTaken {
+
+			lockKey := fmt.Sprintf("%s:%s", lock.group, lock.name)
+			_, err = r.client.LPush(context.TODO(), lockKey, lock.userID.String()).Result()
+			if err != nil {
+				return errors.Join(ErrLockerError, err)
+			}
+			return nil
+		}
+
+		return ErrLockTimeout
+	})
+
+	return err
 }
